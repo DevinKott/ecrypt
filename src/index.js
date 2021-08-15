@@ -1,15 +1,22 @@
 const { createLogger, format, transports } = require('winston');
 const { combine, timestamp, label, printf } = format;
 const NodeRSA = require('node-rsa');
+const commandLineArgs = require('command-line-args');
+const commandLineUsage = require('command-line-usage');
+const { optionDefinitions, sections } = require('./helpDocs');
 
 const path = require('path');
+const fs = require('fs');
 
-const { readFile, writeFile, getExtension } = require('./filesystem');
+const { readFile, writeFile, getExtension, isDir } = require('./filesystem');
 const { encryptFile, decryptFile } = require('./crypto');
 
 const myFormat = printf(({ level, message, label, timestamp }) => {
     return `${timestamp} [${label}] ${level}: ${message}`;
 });
+
+const VALID_MODES = [ 'encrypt', 'decrypt', 'enc', 'dec', 'e', 'd' ];
+const validMode = mode => VALID_MODES.includes(mode);
 
 const logger = createLogger({
     level: 'debug',
@@ -28,6 +35,8 @@ const PROGRAM_AUTHOR = "Devin Kott";
 
 const PUBLIC_KEY_LOCATION = "./keys/id_rsa.pub";
 const PRIVATE_KEY_LOCATION = "./keys/id_rsa";
+
+let DEBUG = false;
 
 const main = async () => {
     printStartingInformation();
@@ -52,30 +61,42 @@ const main = async () => {
     const opensshPriv = new NodeRSA(opensshPrivateKey.toString());
     logger.debug(`Done reading private key (key size: ${opensshPriv.getKeySize()}).`);
 
-    if (process.argv.length <= 2) {
-        logger.error(`Not enough arguments. Must supply file to encrypt.`);
-        return;
+    const options = commandLineArgs(optionDefinitions);
+    const validOptions = options.help ||
+    (
+        options.mode &&
+        options.input &&
+        options.output &&
+        [ options.input ].every(fs.existsSync)
+    );
+    const usage = commandLineUsage(sections);
+
+    if (!validOptions || options.help) {
+        console.log(usage);
+        process.exit();
     }
 
-    const arguments = process.argv.slice(2);
+    const mode = options.mode;
+    const inputFile = options.input;
+    const outputFile = options.output;
 
-    // TODO: More error handling here
-    const mode = arguments[0];
-    const file = arguments[1];
+    if (!validMode(mode)) {
+        logger.error(`Invalid mode. Try one of the following: ${VALID_MODES}`);
+        process.exit();
+    }
 
-    const ext = await getExtension(file).catch(
-        msg => {
-            logger.error(msg);
+    const isDirectory = await isDir(inputFile).catch(
+        errMsg => {
+            logger.error(errMsg);
             process.exit();
         }
     );
-    const name = path.basename(file, ext);
 
     switch (mode) {
         case `e`:
         case `enc`:
         case `encrypt`:
-            await encryptFile(file, `output${ext}`, opensshPub).catch(
+            await encryptFile(inputFile, outputFile, opensshPub).catch(
                 msg => {
                     logger.error(msg);
                     process.exit();
@@ -85,7 +106,7 @@ const main = async () => {
         case `d`:
         case `dec`:
         case `decrypt`:
-            await decryptFile(file, `output${ext}`, opensshPriv).catch(
+            await decryptFile(inputFile, outputFile, opensshPriv).catch(
                 msg => {
                     logger.error(msg);
                     process.exit();

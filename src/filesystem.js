@@ -68,6 +68,25 @@ const getExtension = (filename = "") => {
     return Promise.resolve(path.extname(filename));
 }
 
+const isDir = (directory = "") => {
+    if (!valid(directory)) return Promise.reject(`isDir - argument passed in was null or undefined.`);
+    if (typeof(directory) !== 'string') return Promise.reject(`isDir - argument passed in was not a string.`);
+    if (directory.length <= 0) return Promise.reject(`isDir - argument passed in was an empty string.`);
+
+    return new Promise(
+        (resolve, reject) => {
+            const fullPath = path.join(process.cwd(), directory);
+            fs.stat(
+                fullPath,
+                (err, stats) => {
+                    if (valid(err)) return reject(err.message);
+                    return resolve(stats.isDirectory());
+                }
+            );
+        }
+    );
+};
+
 const readDir = (directory = "") => {
 
 };
@@ -75,5 +94,6 @@ const readDir = (directory = "") => {
 module.exports = {
     readFile,
     writeFile,
-    getExtension
+    getExtension,
+    isDir
 };

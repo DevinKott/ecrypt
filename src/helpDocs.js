@@ -4,7 +4,8 @@ const optionDefinitions = [
     { name: 'output', alias: 'o', type: String },
     { name: 'debug', alias: 'd', type: Boolean },
     { name: 'help', alias: 'h', type: String },
-    { name: 'delete', type: Boolean }
+    { name: 'delete', type: Boolean },
+    { name: 'recursive', alias: 'r', type: Boolean }
 ];
 
 const sections = [
@@ -46,6 +47,13 @@ const sections = [
                 type: Boolean,
                 typeLabel: '{underline Boolean}',
                 description: 'Set to true if you want to delete the input file after processing. Defaults to false.'
+            },
+            {
+                name: 'recursive',
+                type: Boolean,
+                alias: 'r',
+                typeLabel: '{underline Boolean}',
+                description: 'If the input file is a directory, specify whether you want to recursive down into subdirectories.'
             }
         ]
     },
